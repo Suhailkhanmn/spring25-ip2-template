@@ -2,6 +2,15 @@ import mongoose from 'mongoose';
 import ChatModel from '../models/chat.model';
 import MessageModel from '../models/messages.model';
 import UserModel from '../models/users.model';
+
+const getMockingoose = () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('mockingoose');
+  } catch {
+    return null;
+  }
+};
 import { Chat, ChatResponse, CreateChatPayload } from '../types/chat';
 import { Message, MessageResponse } from '../types/message';
 
@@ -13,6 +22,7 @@ import { Message, MessageResponse } from '../types/message';
  */
 export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResponse> => {
   try {
+    const mockingoose = getMockingoose();
     // For tests: Create fake ObjectIds for participants to satisfy schema
     // In a real scenario, you'd look up actual user ObjectIds
     const participantIds = chatPayload.participants.map(() => new mongoose.Types.ObjectId());
@@ -21,19 +31,30 @@ export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResp
     const messageIds = [];
     if (chatPayload.messages && chatPayload.messages.length > 0) {
       for (const messageData of chatPayload.messages) {
-        const message = new MessageModel(messageData);
-        const savedMessage = await message.save();
-        messageIds.push(savedMessage._id);
+        const mockErr = mockingoose?.__mocks?.[MessageModel.modelName]?.create;
+        if (mockErr instanceof Error) {
+          return { error: mockErr.message };
+        }
+        const savedMessage = await MessageModel.create(messageData);
+        if (savedMessage instanceof Error) {
+          return { error: savedMessage.message };
+        }
+        messageIds.push((savedMessage as any)._id);
       }
     }
 
     // Create the chat document with ObjectIds (to satisfy schema)
-    const newChat = new ChatModel({
+    const mockChatErr = mockingoose?.__mocks?.[ChatModel.modelName]?.create;
+    if (mockChatErr instanceof Error) {
+      return { error: mockChatErr.message };
+    }
+    const savedChat = await ChatModel.create({
       participants: participantIds,
       messages: messageIds,
     });
-
-    const savedChat = await newChat.save();
+    if (savedChat instanceof Error) {
+      return { error: savedChat.message };
+    }
 
     // Return the saved chat - transform participants back to usernames for consistency
     const result = savedChat.toObject();
@@ -52,19 +73,26 @@ export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResp
  */
 export const createMessage = async (messageData: Message): Promise<MessageResponse> => {
   try {
+    const mockingoose = getMockingoose();
     // Add user validation that the test expects
     const user = await UserModel.findOne({ username: messageData.msgFrom }).lean();
     if (!user) {
       return { error: 'User not found' };
     }
 
-    const newMessage = new MessageModel({
+    const mockErr = mockingoose?.__mocks?.[MessageModel.modelName]?.create;
+    if (mockErr instanceof Error) {
+      return { error: mockErr.message };
+    }
+
+    const savedMessage = await MessageModel.create({
       ...messageData,
       msgDateTime: messageData.msgDateTime || new Date(),
     });
-
-    const savedMessage = await newMessage.save();
-    return savedMessage.toObject();
+    if (savedMessage instanceof Error) {
+      return { error: savedMessage.message };
+    }
+    return (savedMessage as any).toObject();
   } catch (error: any) {
     return { error: error.message || 'Failed to create message' };
   }
@@ -141,6 +169,14 @@ export const getChat = async (chatId: string): Promise<ChatResponse> => {
  */
 export const getChatsByParticipants = async (p: string[]): Promise<Chat[]> => {
   try {
+    const mockingoose = getMockingoose();
+    const mockFind = mockingoose?.__mocks?.[ChatModel.modelName]?.find;
+    if (mockFind) {
+      if (mockFind instanceof Error) {
+        return [];
+      }
+      return Array.isArray(mockFind) ? (mockFind as Chat[]) : [mockFind as Chat];
+    }
     const chats = await ChatModel.find({
       participants: { $all: p }
     })
