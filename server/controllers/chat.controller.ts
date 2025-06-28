@@ -127,7 +127,7 @@ const chatController = (socket: FakeSOSocket) => {
         return;
       }
 
-      const { chatId } = req.params;
+      const chatId = req.params.chatId || (req.params as any).chatID;
       
       // Create the message - ensure all required fields are properly typed
       const messageData: Message = {
@@ -179,7 +179,7 @@ const chatController = (socket: FakeSOSocket) => {
    */
   const getChatRoute = async (req: ChatIdRequest, res: Response): Promise<void> => {
     try {
-      const { chatId } = req.params;
+      const chatId = req.params.chatId || (req.params as any).chatID;
       const result = await getChat(chatId);
 
       if ('error' in result) {
@@ -211,7 +211,7 @@ const chatController = (socket: FakeSOSocket) => {
         return;
       }
 
-      const { chatId } = req.params;
+      const chatId = req.params.chatId || (req.params as any).chatID;
       const { userId } = req.body;
 
       const result = await addParticipantToChat(chatId, userId);
