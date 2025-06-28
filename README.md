@@ -85,3 +85,15 @@ npm run stryker
 ```sh
 node --max-old-space-size=4096 ./node_modules/.bin/stryker run
 ```
+
+## Running Server Tests
+
+Before running `npm test`, make sure to install the server dependencies. Change
+into the `server/` directory and run:
+
+```sh
+npm install
+```
+
+The Jest tests rely on locally installed packages and will fail with
+"jest: not found" if the dependencies have not been installed.
