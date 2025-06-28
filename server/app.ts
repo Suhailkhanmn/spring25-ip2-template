@@ -50,15 +50,17 @@ socket.on('connection', socket => {
   });
 });
 
-process.on('SIGINT', async () => {
-  await mongoose.disconnect();
-  socket.close();
+if (process.env.NODE_ENV !== 'test') {
+  process.on('SIGINT', async () => {
+    await mongoose.disconnect();
+    socket.close();
 
-  server.close(() => {
-    console.log('Server closed.');
-    process.exit(0);
+    server.close(() => {
+      console.log('Server closed.');
+      process.exit(0);
+    });
   });
-});
+}
 
 app.use(
   cors({
