@@ -23,9 +23,6 @@ import { Message, MessageResponse } from '../types/message';
 export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResponse> => {
   try {
     const mockingoose = getMockingoose();
-    // For tests: Create fake ObjectIds for participants to satisfy schema
-    // In a real scenario, you'd look up actual user ObjectIds
-    const participantIds = chatPayload.participants.map(() => new mongoose.Types.ObjectId());
 
     // Create message documents if messages are provided
     const messageIds = [];
@@ -49,18 +46,14 @@ export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResp
       return { error: mockChatErr.message };
     }
     const savedChat = await ChatModel.create({
-      participants: participantIds,
+      participants: chatPayload.participants,
       messages: messageIds,
     });
     if (savedChat instanceof Error) {
       return { error: savedChat.message };
     }
 
-    // Return the saved chat - transform participants back to usernames for consistency
-    const result = savedChat.toObject();
-    result.participants = chatPayload.participants; // Use original usernames
-    
-    return result as Chat;
+    return savedChat.toObject() as Chat;
   } catch (error: any) {
     return { error: error.message || 'Failed to save chat' };
   }
@@ -110,17 +103,7 @@ export const addMessageToChat = async (chatId: string, messageId: string): Promi
       chatId,
       { $push: { messages: messageId } },
       { new: true }
-    )
-      .populate('participants', 'username')
-      .populate({
-        path: 'messages',
-        populate: {
-          path: 'msgFrom',
-          select: 'username',
-          model: 'User'
-        }
-      })
-      .lean();
+    ).lean();
 
     if (!updatedChat) {
       return { error: 'Chat not found' };
@@ -139,17 +122,7 @@ export const addMessageToChat = async (chatId: string, messageId: string): Promi
  */
 export const getChat = async (chatId: string): Promise<ChatResponse> => {
   try {
-    const chat = await ChatModel.findById(chatId)
-      .populate('participants', 'username')
-      .populate({
-        path: 'messages',
-        populate: {
-          path: 'msgFrom',
-          select: 'username',
-          model: 'User'
-        }
-      })
-      .lean();
+    const chat = await ChatModel.findById(chatId).lean();
 
     if (!chat) {
       return { error: 'Chat not found' };
@@ -179,16 +152,7 @@ export const getChatsByParticipants = async (p: string[]): Promise<Chat[]> => {
     }
     const chats = await ChatModel.find({
       participants: { $all: p }
-    })
-    .populate({
-      path: 'messages',
-      populate: {
-        path: 'msgFrom',
-        select: 'username',
-        model: 'User'
-      }
-    })
-    .lean();
+    }).lean();
 
     // Normalize to an empty array if find() returned something else
     return Array.isArray(chats) ? (chats as Chat[]) : [];
@@ -214,19 +178,9 @@ export const addParticipantToChat = async (chatId: string, userId: string): Prom
 
     const updatedChat = await ChatModel.findByIdAndUpdate(
       chatId,
-      { $push: { participants: user._id } },
+      { $push: { participants: userId } },
       { new: true }
-    )
-      .populate('participants', 'username')
-      .populate({
-        path: 'messages',
-        populate: {
-          path: 'msgFrom',
-          select: 'username',
-          model: 'User'
-        }
-      })
-      .lean();
+    ).lean();
 
     if (!updatedChat) {
       return { error: 'Chat not found' };
