@@ -31,6 +31,9 @@ const getUsersListSpy = jest.spyOn(util, 'getUsersList');
 const deleteUserByUsernameSpy = jest.spyOn(util, 'deleteUserByUsername');
 
 describe('Test userController', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
   describe('POST /signup', () => {
     it('should create a new user given correct arguments', async () => {
       const mockReqBody = {
@@ -305,6 +308,7 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Database error' });
+      expect(getUsersListSpy).toHaveBeenCalled();
     });
 
     it('should return 500 if service throws an error', async () => {
@@ -314,6 +318,7 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(getUsersListSpy).toHaveBeenCalled();
     });
   });
 
@@ -377,6 +382,7 @@ describe('Test userController', () => {
       expect(response.body).toEqual({
         error: 'Invalid request body. username and biography are required.',
       });
+      expect(updatedUserSpy).not.toHaveBeenCalled();
     });
 
     it('should return 400 if biography is missing', async () => {
@@ -392,6 +398,7 @@ describe('Test userController', () => {
       expect(response.body).toEqual({
         error: 'Invalid request body. username and biography are required.',
       });
+      expect(updatedUserSpy).not.toHaveBeenCalled();
     });
 
     it('should return 404 if the user is not found', async () => {
@@ -408,6 +415,7 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'User not found' });
+      expect(updatedUserSpy).toHaveBeenCalledWith(mockUser.username, { biography: 'bio' });
     });
 
     it('should return 500 if updateUser returns an error', async () => {
@@ -424,6 +432,7 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Database failure' });
+      expect(updatedUserSpy).toHaveBeenCalledWith(mockUser.username, { biography: 'bio' });
     });
 
     it('should return 500 if updateUser throws an error', async () => {
@@ -440,6 +449,7 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });
+      expect(updatedUserSpy).toHaveBeenCalledWith(mockUser.username, { biography: 'bio' });
     });
   });
 });
