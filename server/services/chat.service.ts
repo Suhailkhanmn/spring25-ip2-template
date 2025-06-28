@@ -1,18 +1,18 @@
-import mongoose from 'mongoose';
+import { ObjectId } from 'mongodb';
 import ChatModel from '../models/chat.model';
 import MessageModel from '../models/messages.model';
 import UserModel from '../models/users.model';
+import { Chat, ChatResponse, CreateChatPayload } from '../types/chat';
+import { Message, MessageResponse } from '../types/message';
 
 const getMockingoose = () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, import/no-extraneous-dependencies, global-require
     return require('mockingoose');
   } catch {
     return null;
   }
 };
-import { Chat, ChatResponse, CreateChatPayload } from '../types/chat';
-import { Message, MessageResponse } from '../types/message';
 
 /**
  * Creates and saves a new chat document in the database, saving messages dynamically.
@@ -25,18 +25,25 @@ export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResp
     const mockingoose = getMockingoose();
 
     // Create message documents if messages are provided
-    const messageIds = [];
+    const messageIds: ObjectId[] = [];
     if (chatPayload.messages && chatPayload.messages.length > 0) {
-      for (const messageData of chatPayload.messages) {
-        const mockErr = mockingoose?.__mocks?.[MessageModel.modelName]?.create;
-        if (mockErr instanceof Error) {
-          return { error: mockErr.message };
-        }
-        const savedMessage = await MessageModel.create(messageData);
-        if (savedMessage instanceof Error) {
-          return { error: savedMessage.message };
-        }
-        messageIds.push((savedMessage as any)._id);
+      try {
+        const created = await Promise.all(
+          chatPayload.messages.map(async messageData => {
+            const mockErr = mockingoose?.__mocks?.[MessageModel.modelName]?.create;
+            if (mockErr instanceof Error) {
+              throw new Error(mockErr.message);
+            }
+            const savedMessage = await MessageModel.create(messageData);
+            if (savedMessage instanceof Error) {
+              throw new Error(savedMessage.message);
+            }
+            return savedMessage._id!;
+          }),
+        );
+        messageIds.push(...created);
+      } catch (err) {
+        return { error: (err as Error).message };
       }
     }
 
@@ -54,8 +61,8 @@ export const saveChat = async (chatPayload: CreateChatPayload): Promise<ChatResp
     }
 
     return savedChat.toObject() as Chat;
-  } catch (error: any) {
-    return { error: error.message || 'Failed to save chat' };
+  } catch (error) {
+    return { error: (error as Error).message || 'Failed to save chat' };
   }
 };
 
@@ -85,9 +92,9 @@ export const createMessage = async (messageData: Message): Promise<MessageRespon
     if (savedMessage instanceof Error) {
       return { error: savedMessage.message };
     }
-    return (savedMessage as any).toObject();
-  } catch (error: any) {
-    return { error: error.message || 'Failed to create message' };
+    return savedMessage.toObject() as Message;
+  } catch (error) {
+    return { error: (error as Error).message || 'Failed to create message' };
   }
 };
 
@@ -97,12 +104,15 @@ export const createMessage = async (messageData: Message): Promise<MessageRespon
  * @param messageId - The ID of the message to add to the chat.
  * @returns {Promise<ChatResponse>} - Resolves with the updated chat object or an error message.
  */
-export const addMessageToChat = async (chatId: string, messageId: string): Promise<ChatResponse> => {
+export const addMessageToChat = async (
+  chatId: string,
+  messageId: string,
+): Promise<ChatResponse> => {
   try {
     const updatedChat = await ChatModel.findByIdAndUpdate(
       chatId,
       { $push: { messages: messageId } },
-      { new: true }
+      { new: true },
     ).lean();
 
     if (!updatedChat) {
@@ -110,8 +120,8 @@ export const addMessageToChat = async (chatId: string, messageId: string): Promi
     }
 
     return updatedChat as Chat;
-  } catch (error: any) {
-    return { error: error.message || 'Failed to add message to chat' };
+  } catch (error) {
+    return { error: (error as Error).message || 'Failed to add message to chat' };
   }
 };
 
@@ -129,8 +139,8 @@ export const getChat = async (chatId: string): Promise<ChatResponse> => {
     }
 
     return chat as Chat;
-  } catch (error: any) {
-    return { error: error.message || 'Failed to retrieve chat' };
+  } catch (error) {
+    return { error: (error as Error).message || 'Failed to retrieve chat' };
   }
 };
 
@@ -151,7 +161,7 @@ export const getChatsByParticipants = async (p: string[]): Promise<Chat[]> => {
       return Array.isArray(mockFind) ? (mockFind as Chat[]) : [mockFind as Chat];
     }
     const chats = await ChatModel.find({
-      participants: { $all: p }
+      participants: { $all: p },
     }).lean();
 
     // Normalize to an empty array if find() returned something else
@@ -168,7 +178,10 @@ export const getChatsByParticipants = async (p: string[]): Promise<Chat[]> => {
  * @param userId - The ID of the user to add to the chat.
  * @returns {Promise<ChatResponse>} - Resolves with the updated chat object or an error message.
  */
-export const addParticipantToChat = async (chatId: string, userId: string): Promise<ChatResponse> => {
+export const addParticipantToChat = async (
+  chatId: string,
+  userId: string,
+): Promise<ChatResponse> => {
   try {
     // Find the user - this should be mocked in tests
     const user = await UserModel.findOne({ username: userId }).lean();
@@ -179,7 +192,7 @@ export const addParticipantToChat = async (chatId: string, userId: string): Prom
     const updatedChat = await ChatModel.findByIdAndUpdate(
       chatId,
       { $push: { participants: userId } },
-      { new: true }
+      { new: true },
     ).lean();
 
     if (!updatedChat) {
@@ -187,7 +200,7 @@ export const addParticipantToChat = async (chatId: string, userId: string): Prom
     }
 
     return updatedChat as Chat;
-  } catch (error: any) {
-    return { error: error.message || 'Failed to add participant to chat' };
+  } catch (error) {
+    return { error: (error as Error).message || 'Failed to add participant to chat' };
   }
 };

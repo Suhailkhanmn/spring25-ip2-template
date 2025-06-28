@@ -365,13 +365,11 @@ describe('Test userController', () => {
     });
 
     it('should return 400 if username is missing', async () => {
-      const mockReqBody = {
+      const mockReqBody: { biography: string } = {
         biography: 'bio',
-      } as any;
+      };
 
-      const response = await supertest(app)
-        .patch('/user/updateBiography')
-        .send(mockReqBody);
+      const response = await supertest(app).patch('/user/updateBiography').send(mockReqBody);
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -380,13 +378,11 @@ describe('Test userController', () => {
     });
 
     it('should return 400 if biography is missing', async () => {
-      const mockReqBody = {
+      const mockReqBody: { username: string } = {
         username: mockUser.username,
-      } as any;
+      };
 
-      const response = await supertest(app)
-        .patch('/user/updateBiography')
-        .send(mockReqBody);
+      const response = await supertest(app).patch('/user/updateBiography').send(mockReqBody);
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -402,9 +398,7 @@ describe('Test userController', () => {
 
       updatedUserSpy.mockResolvedValueOnce({ error: 'User not found' });
 
-      const response = await supertest(app)
-        .patch('/user/updateBiography')
-        .send(mockReqBody);
+      const response = await supertest(app).patch('/user/updateBiography').send(mockReqBody);
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'User not found' });
@@ -418,9 +412,7 @@ describe('Test userController', () => {
 
       updatedUserSpy.mockResolvedValueOnce({ error: 'Database failure' });
 
-      const response = await supertest(app)
-        .patch('/user/updateBiography')
-        .send(mockReqBody);
+      const response = await supertest(app).patch('/user/updateBiography').send(mockReqBody);
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Database failure' });
@@ -434,9 +426,7 @@ describe('Test userController', () => {
 
       updatedUserSpy.mockRejectedValueOnce(new Error('Unexpected'));
 
-      const response = await supertest(app)
-        .patch('/user/updateBiography')
-        .send(mockReqBody);
+      const response = await supertest(app).patch('/user/updateBiography').send(mockReqBody);
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Internal server error' });

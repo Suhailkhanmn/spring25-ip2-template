@@ -3,8 +3,6 @@ import supertest from 'supertest';
 import { app } from '../../app';
 import * as chatService from '../../services/chat.service';
 import * as databaseUtil from '../../utils/database.util';
-import MessageModel from '../../models/messages.model';
-import ChatModel from '../../models/chat.model';
 import { Chat } from '../../types/chat';
 import { Message } from '../../types/message';
 
@@ -18,9 +16,6 @@ const getChatSpy = jest.spyOn(chatService, 'getChat');
 const addParticipantSpy = jest.spyOn(chatService, 'addParticipantToChat');
 const populateDocumentSpy = jest.spyOn(databaseUtil, 'populateDocument');
 const getChatsByParticipantsSpy = jest.spyOn(chatService, 'getChatsByParticipants');
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const mockingoose = require('mockingoose');
 
 /**
  * Sample test suite for the /chat endpoints
@@ -90,9 +85,7 @@ describe('Chat Controller', () => {
     });
 
     it('should return 400 if request body is invalid', async () => {
-      const response = await supertest(app)
-        .post('/chat/createChat')
-        .send({ participants: [] });
+      const response = await supertest(app).post('/chat/createChat').send({ participants: [] });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Invalid request body' });
@@ -153,7 +146,6 @@ describe('Chat Controller', () => {
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Populate error' });
     });
-
   });
 
   describe('POST /chat/:chatId/addMessage', () => {
@@ -291,7 +283,13 @@ describe('Chat Controller', () => {
         user: { _id: new mongoose.Types.ObjectId(), username: 'user1' },
       };
 
-      const chatResponse = { _id: chatId, participants: ['user1'], messages: [messageResponse], createdAt: new Date(), updatedAt: new Date() };
+      const chatResponse = {
+        _id: chatId,
+        participants: ['user1'],
+        messages: [messageResponse],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
       createMessageSpy.mockResolvedValueOnce(messageResponse);
       addMessageSpy.mockResolvedValueOnce(chatResponse);
@@ -305,7 +303,6 @@ describe('Chat Controller', () => {
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Populate error' });
     });
-
   });
 
   describe('GET /chat/:chatId', () => {
@@ -453,7 +450,6 @@ describe('Chat Controller', () => {
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Service error' });
     });
-
   });
 
   describe('POST /chat/getChatsByUser/:username', () => {
